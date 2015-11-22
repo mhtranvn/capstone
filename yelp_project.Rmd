@@ -1,6 +1,7 @@
 ---
 title: "Check out a Starred, Most-Reviewed but Affordable Restaurant while in Las Vegas"
 author: "Tran Manh Hien"
+date: November 22nd, 2015
 output:
   html_document:
     keep_md: yes
@@ -11,7 +12,7 @@ fontsize: 14pt
 ###Introduction
 Yelp.com is a very popular recommender website, which publishs crowd-sourced reviews about local businesses from bars, restaurants... to dentists and mechanics. Yelp has accumulated more than 90 millions reviews with a monthly average of 89 million unique visitors.   
 According to Yelp, *"Businesses, both small and large, use our platform to engage with consumers at the critical moment when they are deciding where to spend their money..."*. It cannot be truer for restaurant businesses in a tourist destination likes Las Vegas. Being a tourist in an unfamiliar city, most of people will check Yelp out to select a restaurant to visit, and naturally they will look for ones with higher stars, with large number of reviews (and therefore more credibility of rating) and other suitable attributes of the restaurant.   
-To the business owners in Las Vegas, it is important to establish which factors Yelp's users considered when giving preference to a restaurant, so they can work on to improve number of restaurant's patrons. Assuming that number of visitors to a restaurant in a period is proportional with number of Yelp's check-ins, then using relative change in check-ins we can evaluate a relative change in number of visitors. In this paper of the Coursera's Capstone project we investigated the *relationship between total number of check-ins to a restaurant and its total number of reviews, average star rating, price range and host of other restaurant's attributes*... to help business owners identify factors influencing visitors trafic to the restaurants.   
+To the business owners in Las Vegas, it is important to establish which factors Yelp's users considered when giving preference to a restaurant, so they can work on to improve number of restaurant's patrons. Assuming that number of visitors to a restaurant in a period is proportional with number of Yelp's check-ins, then using relative change in check-ins we can evaluate a relative change in number of visitors. In this paper of the Coursera's Capstone project we investigated the _**relationship between total number of check-ins to a restaurant and its total number of reviews, average star rating, price range and host of other restaurant's attributes**_... to help business owners identify factors influencing visitors trafic to the restaurants.   
 
 ###Methods and Data
 ####Data
@@ -195,7 +196,7 @@ To arrive at the best fit model describing this relationship the following _**me
 - 2. After that we use ANOVA to do _**nested model testing**_ to get the simplest model.
 
 #####**Covariation: Residuals and Diagnostics**   
-The received linear model would be investigated for the assumption of normality of residual variation and robustness by various diagnostic tools.
+The received linear model would be investigated for the assumption of normality of residual variation and robustness by various diagnostic tools such as residuals vs fitted ploting, Q-Q Plot, Cook's distances and parameters like Variance Inflation Factors *(VIF)*, *dfbeta*.
 
 ###Results
 ####Stepwise Regression: Fitting of multiple models
@@ -279,4 +280,10 @@ This result may have some important business implication for Las Vegas restauran
    
 ###References
 1. Caffo B., Regression Models for Data Science in R, leanpub.com 2015
-2. Wikipedia, https://en.wikipedia.org/wiki/Akaike_information_criterion
+2. [Wikipedia](https://en.wikipedia.org/wiki/Akaike_information_criterion)
+
+_**Links:**_   
+1. [Rmarkdown source for the file:](https://github.com/mhtranvn/capstone)   
+2. [Data from Yelp's Dataset Challenge:](http://www.yelp.com/dataset_challenge)
+
+
