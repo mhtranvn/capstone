@@ -1,0 +1,64 @@
+Check out a Starred, Most Reviewed but Affordable Restaurant while in Las Vegas
+========================================================
+title: Check in to Star, Most Reviewed but Affordable Restaurant
+author: Tran Manh Hien
+date: November 22nd, 2015
+<small>
+Capstone Project <br>
+Coursera Data Science Specialization
+</small>
+
+Introduction
+========================================================
+Yelp is perhaps the most notable review company in the world.
+Data from Yelp's Dataset Challenge:
+<small>
+- 5 objects: business, user, review, check-in, tip.
+- 1.6M reviews, 61K businesses and check-in information for 45K businesses
+- json format.
+</small>
+
+Primary Question: Investigate "*relationship between total number of check-ins to a restaurant and its total number of reviews, average star rating, price range and host of other restaurant's attributes*"
+
+Using Yelp data to help business owners identify factors affecting visitors' traffic to Las Vegas restaurants.
+
+Data of Las Vegas Restaurants
+========================================================
+Getting Data and Exploratory Analysis:
+<small>
+- Using package *ggmap* to get 10 city centers coordinates, then K-means clustering for *business* longitude and latitude to get Las Vegas.
+- Subseting *review* and *checkin* based on Las Vegas *business* as index, then flattening, cleaning, aggregating and merging *checkin*, *review*, *business* </small><br>
+
+![Correclation](download.png)
+
+
+Methods
+========================================================
+We assume that the relationship between total number of check-ins $Y_i$ and other regressors $X_{ni}$ in Las Vegas restaurants data set follows a _**statistical linear regression model**_:
+$$Y_i =  \beta_1 X_{1i} + \beta_2 X_{2i} + \ldots +\beta_{p} X_{pi} + \epsilon_{i}= \sum_{k=1}^p X_{ik} \beta_j + \epsilon_{i}$$
+$\beta_n$ - slopes, and $\epsilon_{i}$ - residuals $N(0,\sigma^2)$
+
+Modelling: Linear Regression Model Selection Methods
+<small>
+- Used *Stepwise regression*  to quickly eliminate the big number of possible models first.
+- Then ANOVA to do *nested model testing* to get the simplest model.</small>
+
+Covariation: Check residuals and Diagnostics for the final model
+
+
+Results and Discussion
+========================================================
+Final Model:
+<small>
+$$ c.total_i = -81.03 + 2.98*v.total_i + 34.58*avg.star_i$$
+$$ - 94.02*Price.Range_i - 97.26*Delivery_{ti} $$
+$$ + 167.75*Good.For.latenight_{ti} + 84.74*Good.for.Kids_{ti} $$ 
+$$ + 39.74*Outdoor.Seating_{ti} + 88.45*Parking.lot_{ti} + 78.61*Ambience.casual_{ti} $$
+</small>
+
+Answer to primary question: 
+<small>
+The data and model support that *Total check-ins* at a restaurant depends on factors: *total reviews*, *average star rating*, *price range*, *delivery service*, *latenight service*, *kids friendly*, *outdoor seating*, *parking lot*, *ambience casual* of the restaurant. </small><br>
+Business Implication: 
+<small>
+3rd quantile of LV restaurants check-ins=445. It means improvement in one star rating can increase check-ins by 34.58/445 = 7.7% or more for 75% restaurants in LV. Assuming total visits proportional total check-ins then projected relative change in total visits also 7.7%. The same thing applied to other factors as well.  </small>

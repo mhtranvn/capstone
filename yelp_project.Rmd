@@ -1,0 +1,282 @@
+---
+title: "Check out a Starred, Most-Reviewed but Affordable Restaurant while in Las Vegas"
+author: "Tran Manh Hien"
+output:
+  html_document:
+    keep_md: yes
+  pdf_document: default
+  word_document: default
+fontsize: 14pt
+---
+###Introduction
+Yelp.com is a very popular recommender website, which publishs crowd-sourced reviews about local businesses from bars, restaurants... to dentists and mechanics. Yelp has accumulated more than 90 millions reviews with a monthly average of 89 million unique visitors.   
+According to Yelp, *"Businesses, both small and large, use our platform to engage with consumers at the critical moment when they are deciding where to spend their money..."*. It cannot be truer for restaurant businesses in a tourist destination likes Las Vegas. Being a tourist in an unfamiliar city, most of people will check Yelp out to select a restaurant to visit, and naturally they will look for ones with higher stars, with large number of reviews (and therefore more credibility of rating) and other suitable attributes of the restaurant.   
+To the business owners in Las Vegas, it is important to establish which factors Yelp's users considered when giving preference to a restaurant, so they can work on to improve number of restaurant's patrons. Assuming that number of visitors to a restaurant in a period is proportional with number of Yelp's check-ins, then using relative change in check-ins we can evaluate a relative change in number of visitors. In this paper of the Coursera's Capstone project we investigated the *relationship between total number of check-ins to a restaurant and its total number of reviews, average star rating, price range and host of other restaurant's attributes*... to help business owners identify factors influencing visitors trafic to the restaurants.   
+
+###Methods and Data
+####Data
+The dataset used in this project is part of the Round 6 of *Yelp Dataset Challenge*.  This set includes information about local businesses with related visitors and reviews in 10 cities across 4 countries.   
+
+#####**Getting and Cleaning Data**
+The data consists of 5 files, each file is composed of a single object type, one json-object per-line. We used function *stream_in()* in R package *jsonlite* to read *business*, *review* and *checkin* into data frames and save data locally using *saveRDS()* for subsequent use.   
+
+```{r loaddata, message=F, warning=F, echo=F}
+require(jsonlite)
+require(dplyr)
+require("ggmap")
+set.seed(3)
+## Read in the data. Make sure the data in format rds is under directory ./Data
+# business
+if (file.exists("Data/business.rds")) {
+  conr <- file("Data/business.rds","rb")
+  business <- readRDS(conr)
+  close(conr)
+} else {
+  if (file.exists("Data/yelp_academic_dataset_business.json")) {
+    conr <- file("Data/yelp_academic_dataset_business.json","r")
+    business <- stream_in(conr)
+    conw <- file("Data/business.rds","wb")
+    saveRDS(business,conw)
+    close(conr)
+    close(conw)
+  } else {
+    stop("Data file for business must be in <working direcctory>/Data.")
+  }
+}
+#review
+if (file.exists("Data/review.rds")) {
+  conr <- file("Data/review.rds","rb")
+  review <- readRDS(conr)
+  close(conr)
+} else {
+  if (file.exists("Data/yelp_academic_dataset_review.json")) {
+    conr <- file("Data/yelp_academic_dataset_review.json","r")
+    review <- stream_in(conr)
+    conw <- file("Data/review.rds","wb")
+    saveRDS(review,conw)
+    close(conr)
+    close(conw)
+  } else {
+    stop("Data file for business must be in <working direcctory>/Data.")
+  }
+}
+#checkin
+if (file.exists("Data/checkin.rds")) {
+  conr <- file("Data/checkin.rds","rb")
+  checkin <- readRDS(conr)
+  close(conr)
+} else {
+  if (file.exists("Data/yelp_academic_dataset_checkin.json")) {
+    conr <- file("Data/yelp_academic_dataset_checkin.json","r")
+    checkin <- stream_in(conr)
+    conw <- file("Data/checkin.rds","wb")
+    saveRDS(checkin,conw)
+    close(conr)
+    close(conw)
+  } else {
+    stop("Data file for checkin must be in <working direcctory>/Data.")
+  }
+}
+```
+- _business_: information about 61184 businesses, with 15 variables such as unique business_id, name, location (longitude and latitude) and address, category and lots of other business's attributes such as price range, parking, operating hours...    
+- _reviews_: 1569264 reviews about businesses. Each record contains information about ids of business and user, star given to the business, review text and different types of votes (cool, useful,...) for the review.   
+- _checkin_: aggregated number of check-ins for 45166 businesses by 1 hour time slots in whole week.   
+
+Our strategy in getting data for the analysis is first to subset the *business* data to receive only *"Restaurants"* businesses in Las Vegas, then use *business_id* of the received data to get related *review* and *checkin* for there restaurants.  
+Closer look at *business* revealed that its *city* attribute has `r length(unique(business$city))` unique values, significantly more than 10 cities as specified in data description. It was decided to use Google's package *ggmap* to get 10 city centers' coordination, then do K-means clustering on *business* longitude and latitude. By subseting *business* with Las Vegas cluster value and its *category* of *Restaurant* the data frame for Las Vega restaurants was received. Subsequently, *checkin* and *review* data frames also were subset with Las Vegas restaurants as index to receive *checkin* and *review* data for the concerned restaurants.
+```{r lvbus, message=F, warning=F, echo=F}
+## Next 2 lines are recommended by Rich Dean in discussion Group to do clustering on location
+cities <- c('Edinburgh, UK', 'Karlsruhe, Germany', 'Montreal, Canada', 'Waterloo, Canada','Pittsburgh, PA', 'Charlotte, NC', 'Urbana‐Champaign, IL', 'Phoenix, AZ', 'Las Vegas, NV', 'Madison, WI')
+if (file.exists("Data/city.centres.rds")) {
+  conr <- file("Data/city.centres.rds","rb")
+  city.centres <- readRDS(conr)
+  close(conr)
+} else {
+  city.centres <-  geocode(cities)
+  conw <- file("Data/city.centres.rds","wb")
+  saveRDS(city.centres,conw)
+  close(conw)
+}
+geo.cluster <- kmeans(business[,c('longitude','latitude')],city.centres)
+## get business for Las Vegas
+l.business <- business[geo.cluster$cluster==9,] #Las-Vegas
+## select only Restaurants for Las Vegas
+l.business.rtr <- l.business[grep("Restaurants",l.business$categories),]
+l.checkin.rtr <- checkin[checkin$business_id %in% l.business.rtr$business_id, ]
+l.review.rtr <- review[review$business_id %in% l.business.rtr$business_id, ]
+```
+Although Yelp's data set has some attribute of tidy data like one data frame represents one object type, they also need extensive cleaning and merging. The flattened Las Vegas restaurants *business* data frame has 71 columns with more than 25% of NA value or just one-level factor, which eventually need to be dropped.  
+```{r clnbus, message=F, warning=F, echo=F} 
+## CLEANING: 
+## Business: do some cleaning
+l.business.rtr <- flatten(l.business.rtr)
+l.business.rtr[is.null(l.business.rtr)] <- NA
+l.business.rtr <- l.business.rtr[,-c(2:13,86:93, 99:105)] #removed un-related to restaurants columns
+names(l.business.rtr) <- make.names(names(l.business.rtr))
+l.business.rtr$attributes.Accepts.Credit.Cards <- sapply(l.business.rtr$attributes.Accepts.Credit.Cards, toString) #Ross Boucher
+l.business.rtr[, 2:78] <- lapply(l.business.rtr[, 2:78], factor)
+## remove factor with 1 level only
+l.index <-sapply(l.business.rtr, function(x) (!is.factor(x)||((is.factor(x)) & (length(levels(x)) > 1))))
+l.business.rtr <- l.business.rtr[ , l.index]
+## change price level to numbers
+l.business.rtr$attributes.Price.Range <- as.numeric(l.business.rtr$attributes.Price.Range) 
+# filter out those have more than 25% NA values
+l.col <- apply(l.business.rtr, 2, function(x) sum(is.na(x))/length(x))
+l.business.rtr <- l.business.rtr[,l.col<0.25]
+```
+For Las Vegas restaurants reviews, an aggregate by *business_id* new data frame was created with the aim to receive average star rating for each business and number of days between its first and last review. All restaurants with zero number of days between the first and last review were removed since zero signaled that a restaurant had very few reviews or were short-lived.
+```{r clnrev, message=F, warning=F, echo=F}
+## Review:
+l.review.rtr <- flatten(l.review.rtr)
+l.review.rtr$date <- as.Date(l.review.rtr$date)
+## group by business_id and calculate: start_date, end_date for reviews, average star and total number of reviews
+l.review.rtr.l <- l.review.rtr %>% group_by(business_id) %>% summarise(start.date=min(date), end.date=max(date), avg.star=mean(stars), v.total=n(), v.funny=sum(votes.funny), v.useful=sum(votes.useful), v.cool=sum(votes.cool))
+l.review.rtr.l$days <- as.numeric(l.review.rtr.l$end.date - l.review.rtr.l$start.date)
+l.review.rtr.l <- l.review.rtr.l[l.review.rtr.l$days > 0, -c(2:3,6:8)] # remove start.date, end.date, v.useful, v.cool, v.funny
+l.review.rtr.l <- l.review.rtr.l[complete.cases(l.review.rtr.l),]
+```
+Regarding *checkin* data, check-ins are store as a netted data frame of total numbers of check-ins for each hour interval throughout whole week for each business. As we are interested only in total number of check-in for each restaurant in Las Vegas, the local *checkin* data frame was flattened, then aggregated by business.
+```{r clnchk, message=F, warning=F, echo=F}
+## Checkin:
+l.checkin.rtr <- flatten(l.checkin.rtr)
+l.checkin.rtr[is.na(l.checkin.rtr)] <- 0
+l.checkin.rtr$c.total <- apply(l.checkin.rtr[ ,-(1:2)],1,sum)
+l.checkin.rtr.l <- l.checkin.rtr[, c("business_id", "c.total")]
+```
+These 3 cleaned data frames of *checkin*, *review* and *business* of Las Vegas restaurants subsequently were merged into one data frame *l.data* for further analysis and modelling.
+```{r j3df, message=F, warning=F, echo=F}
+## Joining data
+l.data <- inner_join(l.review.rtr.l, l.checkin.rtr.l, by="business_id")
+l.data <- inner_join(l.data, l.business.rtr, by="business_id")
+l.data <- l.data[,-c(1,4)] # remove business_id and days
+l.data <- l.data[complete.cases(l.data),]
+names(l.data) <- sapply(names(l.data), function(x) sub("attributes\\.","",x))
+```
+
+#####**Exploratory Analysis**   
+The *l.data* of Las Vegas Restaurants is a data frame of `r nrow(l.data)` observations. Each observation is for one restaurant and includes information about  *c.total* - total number of check-in, *v.total* - total number of review, *avg.star* - average star rating, as well as 32 other business's attributes such as restaurant's price range, parking, attire...   
+The object of main interest - total check-in at a restaurant in Las Vegas, has mean value of `r round(mean(l.data$c.total),2)` and a quite wide range of values: 
+```{r, echo=F}
+summary(l.data$c.total)
+```
+Preliminary analysis of the relationship between outcome - total check-in *c.total* - with total review *v.total* and price range (below, left) showed a good correlation between total check-in and reviews, and also it is quite evident that expensive restaurants got more reviews.   
+```{r, echo=F, message=F, warning=F, fig.height=4, fig.width=12}
+require(gridExtra)
+l.data1 <- l.data[l.data$c.total <1000, c(1,2,3,7)]
+names(l.data1) <- c("star", "reviews","check_ins","price" )
+p1 <- with(data=l.data1, qplot(reviews, check_ins, colour=price, ylab="check-ins"))
+p2 <- with(data=l.data1, qplot(star, check_ins, colour=price, ylab="check-ins"))
+grid.arrange(p1, p2, ncol=2)
+rm(l.data1)
+```
+In contrary, there is no clear relationship between review stars and price range (above, right), which is quite logical: a good restaurant not necessarily an expensive one. It also can be observed in the same graph that improvement in star rating may lead to increment in total number of check-ins. 
+For an assessment of all numeric columns of the data set, the correlation matrix showed that there a strong correlation between outcome *c.total* and total number of reviews *v.total* covariate with correlation coefficient of 0.888. Individually *c.total* had not-so-strong correlation with price range and average star rating.
+```{r cormat, echo=F, message=F, warning=F }
+options(width=120)
+l.data <- l.data[!is.na(l.data$Price.Range),]
+l.data1 <- l.data[,c(1:3,7)]
+cor(l.data1)
+rm(l.data1)
+```
+   
+   
+####Methods
+According to Prof. Caffo (2015, page 4), regression models are incredibly handy statistical tools used to answers all sorts of questions. In the project two of three most common tasks for regression models were used:   
+- _**Modeling**_, eg to try to find a parsimonious described relationship of total number of check-ins with other possible regressors such as average star rating, number of reviews, price range, parking... and   
+- _**Covariation**_, eg to investigate the variation (residual variation) in check-ins which appears unrelated to regressors.
+
+#####**Modelling: Linear Regression Model Selection Methods**   
+The reality is many other restaurant attributes, beside total number of reviews and star rating as shown in our early exploratory analysis, such as price range, ambiance, parking... may also affect total number of check-ins in the restaurants. 
+We assume that the relationship between total number of check-ins $Y_i$ and other regressors $X_{ni}$ in Las Vegas restaurants data set follows a _**statistical linear regression model**_:
+$$Y_i =  \beta_1 X_{1i} + \beta_2 X_{2i} + \ldots +\beta_{p} X_{pi} + \epsilon_{i}= \sum_{k=1}^p X_{ik} \beta_j + \epsilon_{i}$$ Where $\beta_n$ - slopes and $\epsilon_{i}$ - residuals which are normally distributed as $N(0,\sigma^2)$
+
+To arrive at the best fit model describing this relationship the following _**methods**_ were used:   
+- 1. _**Stepwise regression**_ to quickly eliminate the big number of possible models and to select few good models, then do further elimination of regressors in these models based on theirs p-values.   
+- 2. After that we use ANOVA to do _**nested model testing**_ to get the simplest model.
+
+#####**Covariation: Residuals and Diagnostics**   
+The received linear model would be investigated for the assumption of normality of residual variation and robustness by various diagnostic tools.
+
+###Results
+####Stepwise Regression: Fitting of multiple models
+Since the number of variables of *l.data* except the outcome is only 35, it was reasonable to fit whole *l.data* data set to *lm()* function to get a start model. Applying function *step()* to this full model for backward stepwise regression we got the best model with 22 regressors: *avg.star*, *v.total*, *Outdoor.Seating*, *Price.Range*, *Good.for.Kids*, *Alcohol*, *Noise.Level*, *Attire*, *Delivery*, *Take.out*, *Ambience.romantic*, *Ambience.hipster*, *Ambience.divey*,  *Ambience.casual*, *Good.For.latenight*, *Good.For.lunch*, *Good.For.dinner*, *Good.For.brunch*, *Parking.garage*, *Parking.street*, *Parking.lot*, *Parking.valet*. 13 others regressors were eliminated without significant information lost. 
+```{r echo=F, message=F, warning=F, results='hide'}
+fit0 <- lm(c.total ~ ., data=l.data)
+rfit <- step(fit0, direction="backward") #stepwise regression
+summary(rfit)
+```
+The model adjusted *R-square* is `r summary(rfit)$adj.r.squared`   
+Since stepwise regression method based on Akaike information criterion (AIC) "does not provide a test of a model in the sense of testing a null hypothesis; i.e. AIC can tell nothing about the quality of the model in an absolute sense" (Wikipedia), it was logical to try to improve the received model by removing regressors with high *p-value*. As a result, variables *Alcohol*, *Noise.Level*, *Attire*, *Take.out*, *Ambience.romantic*, *Ambience.hipster*, *Ambience.divey*, *Good.For.lunch*, *Good.For.dinner*, *Good.For.brunch*, *Parking.garage*, *Parking.street*, *Parking.valet* with *p-value* more than 0.05 were removed from the model.
+
+####Netted Models Testing using ANOVA
+After stepwise regression it was received a small set of 9 regressor candidates, which included *v.total*, *avg.star*, *Price.Range*, *Delivery*, *Good.For.latenight*, *Good.for.Kids*, *Outdoor.Seating*, *Parking.lot*, *Ambience.casual*. As shown in our early exploratory analysis, the total number of review *v.total*, average star rating *avg.star* and *Price.Range* had a good correlation with the outcome - total number of check-in *c.total*. So we started netted model testing with the base model of $c.total \sim v.total + avg.star + Price.Range$. By adding the rest of 6 variables to the base model we were able to construct 7 netted models. Result of netted models testing using ANOVA showed that all *p-values* are very small ranging from 0.0001705 to 2.2e-16, so this model conclude that all added terms are necessary.   
+```{r anv, echo=F, message=F, warning=F, results='hide'}
+fit1 <- lm(c.total ~ v.total + avg.star + Price.Range, data=l.data)
+fit2 <- lm(c.total ~ v.total + avg.star + Price.Range + Delivery, data=l.data)
+fit3 <- lm(c.total ~ v.total + avg.star + Price.Range + Delivery + Good.For.latenight, data=l.data)
+fit4 <- lm(c.total ~ v.total + avg.star + Price.Range + Delivery + Good.For.latenight + Good.for.Kids, data=l.data)
+fit5 <- lm(c.total ~ v.total + avg.star + Price.Range + Delivery + Good.For.latenight + Good.for.Kids + Outdoor.Seating, data=l.data)
+fit6 <- lm(c.total ~ v.total + avg.star + Price.Range + Delivery + Good.For.latenight + Good.for.Kids + Outdoor.Seating + Parking.lot, data=l.data)
+fit7 <- lm(c.total ~ v.total + avg.star + Price.Range + Delivery + Good.For.latenight + Good.for.Kids + Outdoor.Seating + Parking.lot + Ambience.casual, data=l.data)
+anova(fit1, fit2, fit3, fit4, fit5, fit6, fit7)
+summary(fit7)
+```
+#####**Final Model Description and Regression Inference** 
+The final linear regression model is: $$ c.total_i = -81.03 + 2.98*v.total_i + 34.58*avg.star_i - 94.02*Price.Range_i - 97.26*Delivery_{ti} + 167.75*Good.For.latenight_{ti} $$ 
+$$ + 84.74*Good.for.Kids_{ti} + 39.74*Outdoor.Seating_{ti} + 88.45*Parking.lot_{ti} + 78.61*Ambience.casual_{ti} $$
+
+  Where:   
+    *c.total* - total check-ins at a *i* restaurant.   
+    *v.total* - total reviews at the restaurant.   
+    *avg.star* - average star rating.   
+    *Price.Range* - restaurant price range (from 1 to 4)   
+    *Delivery* - delivery service (=1 if yes and =0 for all others)   
+    *Good.For.latenigh* - good for late night (=1 if yes and =0 for all others)   
+    *Good.for.Kids* - good for kids (=1 if yes and =0 for all others)   
+    *Outdoor.Seating* - provided outdoor seating (=1 if yes and =0 for all others)   
+    *Parking.lot* - parking lot provided (=1 if yes and =0 for all others)   
+    *Ambience.casual* - casual ambience (=1 if yes and =0 for all others)   
+    
+The slopes of the final model showed that total number of check-ins at a restaurant in Las Vegas is expected to change by almost 3 units (2.98 to be exact) per unit change in total number of reviews on this restaurant at Yelp website, holding other regressors fixed. Similarly, when all other variables unchanged, change one unit in average star rating or price range lead to change of total check-ins by 35 or 94 units respectively. Accepting delivery order can reduce total check-ins by 97, at the same time open till late night can increase check-ins by 168. Providing kid-friendly environment, having outdoor seating or casual ambience, giving parking lot all help to raise total check-ins by 85, 40, 88 and 79 respectively.
+Furthermore for the model slopes, theirs confidence intervals with 95% confidence contain no zero, it mean there were relationships between total number of check-ins (response) with each regressor.
+```{r cf, echo=FALSE}
+cf <- confint(fit7, level=0.95)
+cf
+```
+Based on the intervals above, it can be said that "with 95% confidence, we estimate that one star more in average star rating results in a `r cf[3,1]` to `r cf[3,2]` increase in total check-ins at a restaurant in Las Vegas, holding other variables fixed". Other intervals also can be interpreted in a similar fashion.   
+
+####Covariation: Residuals and Diagnostics
+The model's adjusted R-square of `r summary(fit7)$adj.r.squared` and Variance Inflation Factors *(VIF)* showed that this model has a good fit: *VIF* for all variables are in acceptable range of 1.01-1.53. According to Prof. Caffo (2015, p.98) VIF "measure how much variance inflation the variable causes to the setting where it was orthogonal to the other regressors". So for all variables, theirs individual inclusion into the model only caused variance inflation from 1% to 53%.
+```{r vif, echo=F, message=F, warning=F}
+require(car)
+data.frame(vif(fit7))
+```
+The plot of residuals versus fitted values shows that residuals are randomly located above and below 0 (mean value of residuals is `r mean(resid(fit7))`), normal Q-Q plot fits to the diagonal line which is a sign of normality of errors. It proved that our assumption that residuals should normally distributed as $N(0,\sigma^2)$ when fitting linear regression model to the data was met.   
+```{r qq, echo=F, message=F, warning=F, fig.width= 10}
+par(mfrow = c(2, 2))
+plot(fit7)
+```
+On Cook's distance plot, there 2 data points (observation 229 and 344) having the most influence with Cook's distance value around 1. There 2 data points have total number of check-ins `r l.data$c.total[229]` and `r l.data$c.total[344]`, price ranges of `r l.data$Price.Range[229]` and `r l.data$Price.Range[344]`. Using *dfbeta()* to evaluate how much parameter estimates changed if these 2 outliers were dropped from the data set, it found that except for *Price.Range* slopes which can be changed by around 10%, most of change to others slope estimates are around 1% or less. So it can be concluded that the final model is quite robust regarding outliers data points.   
+```{r robust, echo=F, message=F, warning=F, results='hide'}
+dfbeta(fit7)[229,]
+dfbeta(fit7)[344,]
+```
+   
+   
+###Discussion
+The results of our analysis above gave clear _**answer**_ to the primary question of interest, which is *"relationship between total number of check-ins to a restaurant and its total number of reviews, average star rating, price range and host of other restaurant’s attributes"*, both qualitatively and quantitatively. The linear regression model established that total number of check-ins in to a Las Vegas restaurant increased with increasing number of reviews on restaurant and improvement of the restaurant star rating. At the same time higher price range reduced number of check-ins of a restaurant. Other business attributes such as operating at night, having casual ambience or outdoor seating, kids-friendly environment or even parking lot increased check-ins. Delivery service, naturally, has a negative effect on check-ins.   
+With 3rd quantile of check-ins to Las Vegas restaurants on Yelp's website stood at `r quantile(l.data$c.total, 0.75)`, an increment of one review can lead to increase of 3 check-ins or around 0.70% of total check-ins. In other word, assuming restaurant's visits in a period of time is proportional with total check-ins in the same period, it can be said that for 75% of restaurants in Las Vegas increment of one review in Yelp can increase number of visits to the restaurants by at least 0.70%.   
+Providing our assumption about proportionality of check-ins and visits holds, based on the linear regression model's slopes it can be said that at least 75% of restaurants in Las Vegas would see minimum projected relative change (%) in number of visits for one unit change of our model regressor (holding all other regressors fixed) as below:   
+```{r per, echo=F, message=F, warning=F}
+q <- quantile(l.data$c.total, 0.75)
+df <- data.frame(slopes=coefficients(fit7), visits.relative.change=0)
+df <- df[-1,]
+df$visits.relative.change <- round(df$slopes*100/q,2)
+names(df) <- c("slope", "visits.relative.change.%")
+df
+```
+This result may have some important business implication for Las Vegas restaurants. Although some restaurant's physical attributes such as parking lot, outdoor seating... are difficult to change, businesses can start to work on lowering price range and increasing number of reviews on Yelp by encouraging visitors to write a review or give them some incentive to do so. To improve business Yelp's star rating, in the next step business owners can implement some "big data" project to establish a relationship between restaurant's Yelp star rating and restaurant's most frequently used and influenced review keywords. 
+   
+###References
+1. Caffo B., Regression Models for Data Science in R, leanpub.com 2015
+2. Wikipedia, https://en.wikipedia.org/wiki/Akaike_information_criterion
